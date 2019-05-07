@@ -14,6 +14,8 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
+import * as path from 'path';
+import * as fs from 'fs-extra';
 import { injectable, inject, named } from 'inversify';
 import { json } from 'body-parser';
 // tslint:disable-next-line:no-implicit-dependencies
@@ -67,10 +69,13 @@ export class FileDownloadEndpoint implements BackendApplicationContribution {
             }
         });
         form.on('fileBegin', (_: string, file: formidable.File) => {
-            if (targetUri) {
-                file.path = FileUri.fsPath(targetUri.resolve(file.name));
+            const uri = targetUri ? targetUri.resolve(file.name) : new URI(file.name);
+            const fsPath = FileUri.fsPath(uri);
+            if (path.isAbsolute(fsPath)) {
+                fs.mkdirsSync(path.dirname(fsPath));
+                file.path = fsPath;
             } else {
-                clientErrors.push(`cannot upload "${file.name}", target is not provided`);
+                clientErrors.push(`cannot upload "${file.name}", neither target or file uri provided`);
             }
         });
         form.on('error', (error: Error) => {
